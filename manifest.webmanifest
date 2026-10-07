@@ -1,0 +1,22 @@
+{
+  "name": "Registro de proveedores",
+  "short_name": "Proveedores",
+  "description": "Aplicación para registrar proveedores, fechas, entregas y pendientes.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#edf3f8",
+  "theme_color": "#4f6787",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/4f6787/ffffff?text=P",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/4f6787/ffffff?text=P",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

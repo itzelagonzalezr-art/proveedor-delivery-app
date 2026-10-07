@@ -3,6 +3,7 @@ const STORAGE_KEY = "proveedores-registro-v1";
 const state = {
   records: loadRecords(),
   editingId: null,
+  calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
 };
 
 const elements = {
@@ -32,6 +33,10 @@ const elements = {
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
   clockReadout: document.getElementById("clockReadout"),
   setCurrentTimeBtn: document.getElementById("setCurrentTimeBtn"),
+  calendarGrid: document.getElementById("calendarGrid"),
+  calendarMonthLabel: document.getElementById("calendarMonthLabel"),
+  prevMonthBtn: document.getElementById("prevMonthBtn"),
+  nextMonthBtn: document.getElementById("nextMonthBtn"),
 };
 
 const timeState = {
@@ -58,11 +63,30 @@ function bindEvents() {
 
   elements.setCurrentTimeBtn.addEventListener("click", setCurrentTime);
 
-  elements.searchInput.addEventListener("input", () => render());
-  elements.statusFilter.addEventListener("change", () => render());
-  elements.dateFilter.addEventListener("change", () => render());
-  elements.sortSelect.addEventListener("change", () => render());
+  elements.searchInput.addEventListener("input", render);
+  elements.statusFilter.addEventListener("change", render);
+  elements.dateFilter.addEventListener("change", render);
+  elements.sortSelect.addEventListener("change", render);
   elements.clearFiltersBtn.addEventListener("click", clearFilters);
+
+  elements.prevMonthBtn.addEventListener("click", () => {
+    state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() - 1, 1);
+    renderCalendar();
+  });
+
+  elements.nextMonthBtn.addEventListener("click", () => {
+    state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  elements.calendarGrid.addEventListener("click", (event) => {
+    const dayButton = event.target.closest("button[data-day]");
+    if (!dayButton) return;
+
+    const selectedDate = dayButton.dataset.day;
+    elements.dateFilter.value = selectedDate;
+    render();
+  });
 
   elements.list.addEventListener("click", (event) => {
     const actionButton = event.target.closest("button");
@@ -103,10 +127,8 @@ function setDefaultDate() {
 
 function setCurrentTime() {
   const now = new Date();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
-  timeState.hour = hour;
-  timeState.minute = minute;
+  timeState.hour = now.getHours();
+  timeState.minute = now.getMinutes();
   syncClockDisplay();
 }
 
@@ -152,9 +174,7 @@ function handleSubmit(event) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (!record.name || !record.date) {
-    return;
-  }
+  if (!record.name || !record.date) return;
 
   if (state.editingId) {
     state.records = state.records.map((entry) => (entry.id === state.editingId ? record : entry));
@@ -177,6 +197,7 @@ function formatTimeFromState() {
 
 function render() {
   renderSummary();
+  renderCalendar();
   renderList();
 }
 
@@ -193,6 +214,56 @@ function renderSummary() {
   elements.todayCount.textContent = String(todayTotal);
 }
 
+function renderCalendar() {
+  const year = state.calendarMonth.getFullYear();
+  const month = state.calendarMonth.getMonth();
+  const monthFirstDay = new Date(year, month, 1);
+  const monthLastDay = new Date(year, month + 1, 0);
+  const firstWeekday = (monthFirstDay.getDay() + 6) % 7;
+  const totalDays = monthLastDay.getDate();
+
+  elements.calendarMonthLabel.textContent = new Intl.DateTimeFormat("es-ES", {
+    month: "long",
+    year: "numeric",
+  }).format(state.calendarMonth);
+
+  const days = [];
+
+  for (let i = 0; i < firstWeekday; i += 1) {
+    days.push({ type: "empty", value: "" });
+  }
+
+  for (let day = 1; day <= totalDays; day += 1) {
+    const iso = new Date(year, month, day).toISOString().split("T")[0];
+    days.push({
+      type: "day",
+      value: String(day),
+      iso,
+      hasRecords: state.records.some((record) => record.date === iso),
+      isSelected: elements.dateFilter.value === iso,
+    });
+  }
+
+  const totalCells = Math.ceil(days.length / 7) * 7;
+  while (days.length < totalCells) {
+    days.push({ type: "empty", value: "" });
+  }
+
+  elements.calendarGrid.innerHTML = days
+    .map((day) => {
+      if (day.type === "empty") {
+        return '<span class="calendar-day empty" aria-hidden="true"></span>';
+      }
+
+      const classes = ["calendar-day"];
+      if (day.isSelected) classes.push("active");
+      if (day.hasRecords) classes.push("has-records");
+
+      return `<button type="button" class="${classes.join(" ")}" data-day="${day.iso}" aria-label="Filtrar por ${day.iso}">${day.value}</button>`;
+    })
+    .join("");
+}
+
 function renderList() {
   const filteredRecords = getFilteredRecords();
 
@@ -204,7 +275,7 @@ function renderList() {
 
   elements.emptyState.classList.add("hidden");
 
-  const html = filteredRecords
+  elements.list.innerHTML = filteredRecords
     .map(
       (record) => `
         <article class="provider-card ${record.status}">
@@ -218,7 +289,7 @@ function renderList() {
 
           <div class="info-grid">
             <div class="field-value">
-              <span>Tareas pendientes</span>
+              <span>Tareas</span>
               <p>${formatText(record.pendingTasks)}</p>
             </div>
             <div class="field-value">
@@ -233,7 +304,7 @@ function renderList() {
               <span>Cierre</span>
               <p>${formatText(record.dayClosure)}</p>
             </div>
-            <div class="field-value" style="grid-column: 1 / -1;">
+            <div class="field-value full">
               <span>Entregas</span>
               <p>${formatText(record.deliveries)}</p>
             </div>
@@ -247,8 +318,6 @@ function renderList() {
       `,
     )
     .join("");
-
-  elements.list.innerHTML = html;
 }
 
 function getFilteredRecords() {
@@ -271,23 +340,25 @@ function getFilteredRecords() {
     list = list.filter((record) => record.date === selectedDate);
   }
 
-  list.sort((a, b) => {
-    if (sort === "time-asc") return compareDateTime(a, b, false);
-    if (sort === "date-desc") return compareDateTime(a, b, true, true);
-    if (sort === "date-asc") return compareDateTime(a, b, true, false);
-    return compareDateTime(a, b, false, true);
-  });
+  switch (sort) {
+    case "time-asc":
+      list.sort((a, b) => toComparableDateTime(a) - toComparableDateTime(b));
+      break;
+    case "date-desc":
+      list.sort((a, b) => toComparableDateTime(b) - toComparableDateTime(a));
+      break;
+    case "date-asc":
+      list.sort((a, b) => toComparableDateTime(a) - toComparableDateTime(b));
+      break;
+    default:
+      list.sort((a, b) => toComparableDateTime(b) - toComparableDateTime(a));
+  }
 
   return list;
 }
 
-function compareDateTime(a, b, byDate, descending = false) {
-  const aValue = byDate ? `${a.date}T${a.time || "00:00"}` : `${a.date}T${a.time || "00:00"}`;
-  const bValue = byDate ? `${b.date}T${b.time || "00:00"}` : `${b.date}T${b.time || "00:00"}`;
-
-  if (aValue < bValue) return descending ? 1 : -1;
-  if (aValue > bValue) return descending ? -1 : 1;
-  return 0;
+function toComparableDateTime(record) {
+  return new Date(`${record.date}T${record.time || "00:00"}:00`).getTime();
 }
 
 function clearFilters() {
@@ -305,18 +376,19 @@ function populateForm(record) {
 
   elements.providerName.value = record.name;
   elements.providerDate.value = record.date;
-  elements.providerTime.value = record.time;
-  const [hour, minute] = record.time.split(":");
-  timeState.hour = Number(hour);
-  timeState.minute = Number(minute);
-  syncClockDisplay();
-
   elements.providerStatus.value = record.status;
   elements.pendingTasks.value = record.pendingTasks;
   elements.fridgeNotes.value = record.fridgeNotes;
   elements.generalNotes.value = record.generalNotes;
   elements.dayClosure.value = record.dayClosure;
   elements.deliveries.value = record.deliveries;
+
+  if (record.time) {
+    const [hour, minute] = record.time.split(":");
+    timeState.hour = Number(hour);
+    timeState.minute = Number(minute);
+    syncClockDisplay();
+  }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -369,15 +441,18 @@ function formatDate(dateString) {
 function formatTime(timeString) {
   if (!timeString) return "Sin hora";
   const [hour, minute] = timeString.split(":");
-  const parsedHour = Number(hour);
-  const parsedMinute = Number(minute);
-
   const date = new Date();
-  date.setHours(parsedHour, parsedMinute, 0, 0);
+  date.setHours(Number(hour), Number(minute), 0, 0);
 
   return new Intl.DateTimeFormat("es-ES", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   }).format(date);
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
 }

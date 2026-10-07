@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4f6787" />
+    <meta
+      name="description"
+      content="Registro de proveedores con historial, calendario, filtros, búsqueda y almacenamiento local."
+    />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Registro de proveedores</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Control operativo</p>
+          <h1>Registro de proveedores</h1>
+        </div>
+        <div class="status-pill">
+          <span class="pulse"></span>
+          Guardado auto
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Resumen del día">
+        <article class="summary-card accent">
+          <span>Total</span>
+          <strong id="totalCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Pendientes</span>
+          <strong id="pendingCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Entregados</span>
+          <strong id="deliveredCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Hoy</span>
+          <strong id="todayCount">0</strong>
+        </article>
+      </section>
+
+      <main class="layout">
+        <section class="panel form-panel" aria-label="Formulario de registro">
+          <div class="panel-header">
+            <h2 id="formTitle">Nuevo registro</h2>
+            <button type="button" class="ghost-btn" id="resetFormBtn">Limpiar</button>
+          </div>
+
+          <form id="providerForm" autocomplete="off">
+            <div class="field-grid">
+              <label class="field">
+                <span>Proveedor</span>
+                <input id="providerName" name="providerName" type="text" placeholder="Nombre del proveedor" required />
+              </label>
+
+              <label class="field">
+                <span>Fecha</span>
+                <input id="providerDate" name="providerDate" type="date" required />
+              </label>
+            </div>
+
+            <div class="time-box">
+              <div class="time-header">
+                <span>Hora de llegada</span>
+                <button type="button" class="mini-btn" id="setCurrentTimeBtn">Ahora</button>
+              </div>
+
+              <div class="clock-shell" aria-label="Selector interactivo de hora">
+                <div class="clock-readout" id="clockReadout">08:30</div>
+                <div class="clock-controls">
+                  <div class="control-group">
+                    <span>Hora</span>
+                    <div class="stepper">
+                      <button type="button" class="step-btn" data-adjust="hour" data-direction="-" aria-label="Reducir hora">−</button>
+                      <button type="button" class="step-btn" data-adjust="hour" data-direction="+" aria-label="Aumentar hora">+</button>
+                    </div>
+                  </div>
+                  <div class="control-group">
+                    <span>Minuto</span>
+                    <div class="stepper">
+                      <button type="button" class="step-btn" data-adjust="minute" data-direction="-" aria-label="Reducir minutos">−</button>
+                      <button type="button" class="step-btn" data-adjust="minute" data-direction="+" aria-label="Aumentar minutos">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <input id="providerTime" name="providerTime" type="time" hidden />
+            </div>
+
+            <label class="field">
+              <span>Estado de entrega</span>
+              <select id="providerStatus" name="providerStatus">
+                <option value="pending">Pendiente</option>
+                <option value="delivered">Entregado</option>
+              </select>
+            </label>
+
+            <div class="field-list">
+              <label class="field text-area-field">
+                <span>Tareas pendientes</span>
+                <textarea id="pendingTasks" name="pendingTasks" rows="2" placeholder="Qué queda pendiente..."></textarea>
+              </label>
+
+              <label class="field text-area-field">
+                <span>Cambios / temas del refrigerador</span>
+                <textarea id="fridgeNotes" name="fridgeNotes" rows="2" placeholder="Cambio, ajuste o problema del refrigerador..."></textarea>
+              </label>
+
+              <label class="field text-area-field">
+                <span>Observaciones generales</span>
+                <textarea id="generalNotes" name="generalNotes" rows="2" placeholder="Observaciones relevantes..."></textarea>
+              </label>
+
+              <label class="field text-area-field">
+                <span>Cierre del día</span>
+                <textarea id="dayClosure" name="dayClosure" rows="2" placeholder="Resumen del cierre..."></textarea>
+              </label>
+
+              <label class="field text-area-field">
+                <span>Entregas</span>
+                <textarea id="deliveries" name="deliveries" rows="2" placeholder="Productos o entregas registradas..."></textarea>
+              </label>
+            </div>
+
+            <button type="submit" class="primary-btn" id="submitButton">Guardar registro</button>
+          </form>
+        </section>
+
+        <aside class="panel list-panel" aria-label="Historial y filtros">
+          <div class="toolbar" aria-label="Busqueda y filtros">
+            <div class="search-box">
+              <input id="searchInput" type="search" placeholder="Buscar proveedor" aria-label="Buscar proveedor" />
+            </div>
+
+            <div class="filter-row">
+              <select id="statusFilter" aria-label="Filtrar por estado">
+                <option value="all">Todos</option>
+                <option value="pending">Pendientes</option>
+                <option value="delivered">Entregados</option>
+              </select>
+
+              <input id="dateFilter" type="date" aria-label="Filtrar por fecha" />
+
+              <select id="sortSelect" aria-label="Ordenar registros">
+                <option value="time-desc">Hora ↓</option>
+                <option value="time-asc">Hora ↑</option>
+                <option value="date-desc">Día ↓</option>
+                <option value="date-asc">Día ↑</option>
+              </select>
+            </div>
+
+            <button type="button" class="secondary-btn" id="clearFiltersBtn">Limpiar filtros</button>
+          </div>
+
+          <div class="calendar-box">
+            <div class="calendar-header">
+              <button type="button" class="calendar-nav" id="prevMonthBtn" aria-label="Mes anterior">‹</button>
+              <h3 id="calendarMonthLabel">Mes</h3>
+              <button type="button" class="calendar-nav" id="nextMonthBtn" aria-label="Mes siguiente">›</button>
+            </div>
+            <div class="calendar-weekdays">
+              <span>Do</span>
+              <span>Lu</span>
+              <span>Ma</span>
+              <span>Mi</span>
+              <span>Ju</span>
+              <span>Vi</span>
+              <span>Sa</span>
+            </div>
+            <div id="calendarGrid" class="calendar-grid" aria-live="polite"></div>
+          </div>
+
+          <div id="emptyState" class="empty-state hidden">No hay registros con los filtros actuales.</div>
+          <div id="providerList" class="provider-list" aria-live="polite"></div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
